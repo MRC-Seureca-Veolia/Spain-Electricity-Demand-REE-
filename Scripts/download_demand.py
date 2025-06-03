@@ -5,20 +5,23 @@ import shutil
 from datetime import datetime, timedelta
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 # === Set download directory ===
-download_dir = os.path.join(os.getcwd(), "temp_downloads")
+download_dir = os.path.join(os.getcwd(), "Daily-Demand")
 os.makedirs(download_dir, exist_ok=True)
 
-# === Headless Chrome config ===
+# === Headless Chromium config ===
 chrome_options = Options()
 chrome_options.add_argument("--headless")
-chrome_options.add_argument("--disable-gpu")
 chrome_options.add_argument("--no-sandbox")
+chrome_options.add_argument("--disable-gpu")
 chrome_options.add_argument("--window-size=1920,1080")
+chrome_options.binary_location = "/snap/bin/chromium"  # 👈 important fix
+
 chrome_options.add_experimental_option("prefs", {
     "download.default_directory": download_dir,
     "download.prompt_for_download": False,
@@ -26,15 +29,15 @@ chrome_options.add_experimental_option("prefs", {
     "safebrowsing.enabled": True
 })
 
-driver = webdriver.Chrome(options=chrome_options)
+# Explicitly define chromedriver path (installed via apt)
+driver = webdriver.Chrome(service=Service("/usr/bin/chromedriver"), options=chrome_options)
 
-# === Calculate yesterday's date ===
+# === Calculate yesterday ===
 yesterday = datetime.utcnow() - timedelta(days=1)
 date_str = yesterday.strftime("%d-%m-%Y")
 
-# === Construct URL for that date ===
+# === Open ESIOS URL ===
 url = f"https://www.esios.ree.es/es/analisis/1293?vis=1&start_date={date_str}T00%3A00&end_date={date_str}T23%3A55&groupby=hour"
-
 driver.get(url)
 
 try:
@@ -65,25 +68,18 @@ try:
     driver.execute_script("arguments[0].click();", csv_option)
     print("📄 CSV clicked, downloading...")
 
-    # Wait for download to complete
     time.sleep(10)
 
-    # === Move file to Daily-Demand folder ===
-    daily_dir = os.path.join(os.getcwd(), "Daily-Demand")
-    os.makedirs(daily_dir, exist_ok=True)
-
+    # Check if file exists
     downloaded_files = glob.glob(os.path.join(download_dir, "*.csv"))
     if downloaded_files:
-        latest_file = max(downloaded_files, key=os.path.getctime)
-        dest_path = os.path.join(daily_dir, os.path.basename(latest_file))
-        shutil.move(latest_file, dest_path)
-        print(f"✅ File moved to: {dest_path}")
+        print("✅ CSV file saved in:", download_dir)
     else:
-        print("⚠️ No CSV file found in download directory.")
+        print("⚠️ No CSV file found.")
 
 except Exception as e:
     print("❌ Error:", e)
 
 finally:
     driver.quit()
-    print(f"✅ Done. Check here:\n📁 {os.path.join(os.getcwd(), 'Daily-Demand')}")
+    print("✅ Done.")

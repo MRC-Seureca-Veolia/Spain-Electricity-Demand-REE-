@@ -1,42 +1,45 @@
 name: Download and Commit Daily Electricity Demand Data
 
-# Trigger every day at 16:45 UTC
 on:
   schedule:
-    - cron: '45 16 * * *'
+    - cron: '45 16 * * *'  # 16:45 UTC daily
   workflow_dispatch:
 
 permissions:
-  contents: write  # REQUIRED to allow push with GITHUB_TOKEN
+  contents: write  # Required to push with GITHUB_TOKEN
 
 jobs:
   download-and-push:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
 
-    - name: Install dependencies
-      run: pip install -r requirements.txt
+      - name: Install dependencies
+        run: |
+          pip install selenium pytz
+          sudo apt-get update
+          sudo apt-get install -y chromium-browser chromium-chromedriver
+          sudo ln -sf /usr/lib/chromium-browser/chromedriver /usr/bin/chromedriver
 
-    - name: Run script to download daily demand
-      run: python Scripts/download_demand.py
+      - name: Run script to download daily demand
+        run: python Scripts/download_demand.py
 
-    - name: Configure Git
-      run: |
-        git config --global user.name "github-actions"
-        git config --global user.email "github-actions@github.com"
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
 
-    - name: Commit and push changes
-      run: |
-        git add Daily-Demand/
-        git commit -m "Add new daily demand data: $(date +'%Y-%m-%d')" || echo "No changes to commit"
-        git push origin main
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Commit and push changes
+        run: |
+          git add Daily-Demand/
+          git commit -m "Add new daily demand data: $(TZ=Europe/Madrid date +'%Y-%m-%d')" || echo "No changes to commit"
+          git push origin main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

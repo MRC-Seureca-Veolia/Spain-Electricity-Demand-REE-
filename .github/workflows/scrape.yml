@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write  # Required for committing with GITHUB_TOKEN
+  contents: write  # REQUIRED to allow push with GITHUB_TOKEN
 
 jobs:
   download-and-push:
@@ -22,12 +22,8 @@ jobs:
       with:
         python-version: '3.10'
 
-    - name: Install dependencies and Chromium
-      run: |
-        pip install selenium pytz
-        sudo apt-get update
-        sudo apt-get install -y chromium-browser chromium-chromedriver
-        sudo ln -sf /usr/lib/chromium-browser/chromedriver /usr/bin/chromedriver
+    - name: Install dependencies
+      run: pip install -r requirements.txt
 
     - name: Run script to download daily demand
       run: python Scripts/download_demand.py

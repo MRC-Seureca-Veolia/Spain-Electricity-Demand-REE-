@@ -5,22 +5,26 @@ import shutil
 from datetime import datetime, timedelta
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+import pytz  # <--- Added for timezone handling
 
 # === PATH SETUP ===
 download_dir = os.path.join(os.getcwd(), "Daily-Demand")
 os.makedirs(download_dir, exist_ok=True)
 
-# === DATE CONFIG ===
-yesterday = datetime.utcnow() - timedelta(days=1)
+# === DATE CONFIG (Spain local time) ===
+tz = pytz.timezone("Europe/Madrid")
+today_madrid = datetime.now(tz)
+yesterday = today_madrid - timedelta(days=1)
 start_str = yesterday.strftime("%d-%m-%Y")
 end_str = yesterday.strftime("%d-%m-%Y")
+filename_date = yesterday.strftime("%Y-%m-%d")
 
 # === DYNAMIC URL ===
-url = f"https://www.esios.ree.es/es/analisis/1293?vis=1&start_date={start_str}T00%3A00&end_date={start_str}T23%3A55&groupby=hour"
+url = f"https://www.esios.ree.es/es/analisis/1293?vis=1&start_date={start_str}T00%3A00&end_date={end_str}T23%3A55&groupby=hour"
 
 # === CHROME OPTIONS ===
 chrome_options = Options()
@@ -70,11 +74,11 @@ try:
     # Wait for file to download
     time.sleep(15)
 
-    # Rename downloaded file to YYYY-MM-DD.csv
+    # Rename downloaded file
     downloaded_files = glob.glob(os.path.join(download_dir, "*.csv"))
     if downloaded_files:
         latest_file = max(downloaded_files, key=os.path.getctime)
-        new_filename = os.path.join(download_dir, f"{yesterday.strftime('%Y-%m-%d')}.csv")
+        new_filename = os.path.join(download_dir, f"{filename_date}.csv")
         shutil.move(latest_file, new_filename)
         print(f"✅ File renamed to {new_filename}")
     else:

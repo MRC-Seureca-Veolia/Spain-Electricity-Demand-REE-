@@ -28,5 +28,5 @@ jobs:
           fi
 
       - name: 🚀 Run REE scraper
-        run: python scripts/download_demand.py
+        run: python Scripts/download_demand.py
 

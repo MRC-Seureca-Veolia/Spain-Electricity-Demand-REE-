@@ -3,7 +3,7 @@ name: Daily REE Scraper
 on:
   schedule:
     - cron: '30 1 * * *'  # Runs daily at 01:30 UTC
-  workflow_dispatch:      # Allow manual trigger
+  workflow_dispatch:
 
 jobs:
   scrape:
@@ -23,7 +23,7 @@ jobs:
           pip install selenium
           sudo apt-get update
           sudo apt-get install -y chromium-browser chromium-chromedriver
-          sudo ln -sf /usr/lib/chromium-browser/chromedriver /usr/bin/chromedriver
+          if [ ! -f /usr/bin/chromedriver ]; then sudo ln -s /usr/lib/chromium-browser/chromedriver /usr/bin/chromedriver; fi
 
       - name: Run REE scraper
         run: python Scripts/download_demand.py

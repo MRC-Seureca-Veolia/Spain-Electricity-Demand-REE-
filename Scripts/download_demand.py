@@ -3,28 +3,25 @@ import time
 import glob
 import shutil
 from datetime import datetime, timedelta
+import pandas as pd
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-import pytz  # <--- Added for timezone handling
 
 # === PATH SETUP ===
 download_dir = os.path.join(os.getcwd(), "Daily-Demand")
 os.makedirs(download_dir, exist_ok=True)
 
-# === DATE CONFIG (Spain local time) ===
-tz = pytz.timezone("Europe/Madrid")
-today_madrid = datetime.now(tz)
-yesterday = today_madrid - timedelta(days=1)
-start_str = yesterday.strftime("%d-%m-%Y")
-end_str = yesterday.strftime("%d-%m-%Y")
-filename_date = yesterday.strftime("%Y-%m-%d")
+# === DATE CONFIG ===
+yesterday = datetime.utcnow() - timedelta(days=1)
+yesterday_str = yesterday.strftime("%Y-%m-%d")
+url_date_str = yesterday.strftime("%d-%m-%Y")
 
-# === DYNAMIC URL ===
-url = f"https://www.esios.ree.es/es/analisis/1293?vis=1&start_date={start_str}T00%3A00&end_date={end_str}T23%3A55&groupby=hour"
+# === BUILD URL ===
+url = f"https://www.esios.ree.es/es/analisis/1293?vis=1&start_date={url_date_str}T00%3A00&end_date={url_date_str}T23%3A55&groupby=hour"
 
 # === CHROME OPTIONS ===
 chrome_options = Options()
@@ -39,14 +36,14 @@ chrome_options.add_experimental_option("prefs", {
     "safebrowsing.enabled": True
 })
 
-# === BROWSER LAUNCH ===
+# === LAUNCH DRIVER ===
 driver = webdriver.Chrome(service=Service("/usr/bin/chromedriver"), options=chrome_options)
 driver.get(url)
 
 try:
     print("⏳ Waiting for export button...")
 
-    # Accept cookie if appears
+    # Accept cookies
     try:
         cookie_button = WebDriverWait(driver, 5).until(
             EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Aceptar')]"))
@@ -56,7 +53,7 @@ try:
     except:
         print("🍪 No cookie popup")
 
-    # Click Exportación
+    # Export CSV
     export_button = WebDriverWait(driver, 60).until(
         EC.element_to_be_clickable((By.ID, "export_multiple"))
     )
@@ -64,23 +61,30 @@ try:
     time.sleep(1)
     export_button.click()
 
-    # Click CSV
     csv_option = WebDriverWait(driver, 10).until(
         EC.element_to_be_clickable((By.XPATH, "//div[@class='opt-ancle' and contains(text(), 'CSV')]"))
     )
     driver.execute_script("arguments[0].click();", csv_option)
     print("📄 CSV clicked, downloading...")
 
-    # Wait for file to download
+    # Wait for file
     time.sleep(15)
 
-    # Rename downloaded file
+    # Find downloaded CSV
     downloaded_files = glob.glob(os.path.join(download_dir, "*.csv"))
     if downloaded_files:
         latest_file = max(downloaded_files, key=os.path.getctime)
-        new_filename = os.path.join(download_dir, f"{filename_date}.csv")
-        shutil.move(latest_file, new_filename)
-        print(f"✅ File renamed to {new_filename}")
+
+        # Filter CSV to include only rows with the correct date
+        df = pd.read_csv(latest_file, sep=";")
+        df_filtered = df[df["datetime"].str.startswith(yesterday_str)]
+
+        # Save cleaned CSV
+        output_file = os.path.join(download_dir, f"{yesterday_str}.csv")
+        df_filtered.to_csv(output_file, index=False, sep=";")
+        os.remove(latest_file)
+
+        print(f"✅ Cleaned CSV saved as: {output_file}")
     else:
         print("⚠️ No CSV file found to rename.")
 
@@ -91,3 +95,4 @@ finally:
     driver.quit()
 
 print(f"✅ Done. Check folder:\n📁 {download_dir}")
+

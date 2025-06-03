@@ -1,0 +1,34 @@
+name: Daily REE Scraper
+
+on:
+  schedule:
+    - cron: '30 1 * * *'  # Runs once daily at 01:30 UTC
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          sudo apt-get update
+          sudo apt-get install -y chromium-browser chromium-chromedriver
+          sudo ln -s /usr/lib/chromium-browser/chromedriver /usr/bin/chromedriver
+
+      - name: Random delay (0–60 min)
+        run: |
+          DELAY=$((RANDOM % 3600))  # 0–3599 seconds = up to 60 minutes
+          echo "⏳ Sleeping for $DELAY seconds (~$((DELAY / 60)) min)..."
+          sleep $DELAY
+
+      - name: Run REE scraper
+        run: python scripts/download_demand.py
